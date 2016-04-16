@@ -1,0 +1,147 @@
+---
+title: "A Simple Statistical Exploration of the Exponential Distribution"
+author: "Wayne Witzke"
+output: pdf_document
+---
+
+## Synopsis
+This analysis explores the relationship between theoretical and sample
+statistics for the exponential distribution. It simulates sets of experimental
+samples drawn from the exponential distribution, and calculates statistics for
+those sets. Finally, it shows that the distribution of sample means of those
+sets is Gaussian, and thus the Central Limit Theorem applies.
+
+## Preliminaries
+
+This section prepares the analysis to run. For more information on replicating
+this analysis, see the appendix.
+
+```{r setup}
+knitr::opts_chunk$set( echo = TRUE );
+library(ggplot2);
+set.seed(397413653);
+```
+
+## Simulation
+
+This analysis generates 1000 sets of 40 random numbers taken from the
+exponential distribution. The chosen rate ($\lambda$) is 0.2, giving the
+distribution a theoretical mean and standard deviation of $\mu=\sigma=\frac{1}{\lambda}=5$.
+
+```{r simulation}
+sim.matrix = matrix( rexp( 40000, 0.2 ), 1000, 40 );
+raw.mean = mean( as.vector( sim.matrix ) );
+raw.sd = sd( as.vector( sim.matrix ) );
+```
+
+Note that, over all generated values, the mean is $\bar{x}=`r raw.mean`$ and
+the standard deviation is $s=`r raw.sd`$.
+
+## Results
+
+### Sample Mean vs. Theoretical Mean
+```{r sample_mean_vs_theoretical_mean}
+sim.means = apply( sim.matrix, 1, mean );
+sim.mean = mean( sim.means );
+```
+Once again, the theoretical mean of the distribution is given by 
+$\mu=\frac{1}{\lambda}=5$. Taking the average of the means of each
+simulation, we see that the simulated sample mean is $\bar{X}=`r sim.mean`$.
+
+### Sample Variance vs. Theoretical Variance
+```{r sample_variance_vs_theoretical_variance}
+sim.variance = var( sim.means );
+sim.sd = sd( sim.means );
+```
+The theoretical variance of the sample is given by 
+$\sigma^2=(\frac{1}{\lambda})^2=25$. The variance of the sample mean, however,
+is a much smaller $s_m^2=`r sim.variance`$. Note that there was no expectation
+that the sample mean variance and theoretical variance would similar, as they
+describe different distributions. However, note that $s_m^2\approx\frac{s^2}{n}=`r raw.sd^2/40`\approx\frac{\sigma^2}{n}=`r 25/40`$,
+where $n=40$ is the sample size, $\frac{\sigma}{\sqrt{n}}$ is the true
+standard error, and $\frac{s}{\sqrt{n}}$ is the sample standard error.
+
+The statistics for the theoretical distribution and sample means are summarized
+in the following table.
+\begin{center}
+\bgroup
+\def\arraystretch{1.5}
+\begin{tabular}{|l|c|c|}
+ \hline
+ \multicolumn{3}{|c|}{Theoretical Distribution vs. Simulated Sample Mean Statistics} \\
+ \hline
+ \hline
+ & Mean & Variance \\
+ \hline
+ Theoretical Exponential Distribution & $\frac{1}{\lambda}=5$ & $\left ( \frac{1}{\lambda} \right ) ^2=25$ \\
+ \hline
+ Simulated Sample Means & `r sim.mean` & `r sim.variance` \\
+ \hline
+\end{tabular}
+\egroup
+\end{center}
+
+
+### Distribution
+As can be seen from the following histrogram, random values drawn from the
+exponential distribution do not have a normal distribution.
+
+```{r simulation_histogram, fig.width = 7, fig.height = 4}
+raw.histogram =
+    ggplot( show.legend = TRUE ) + aes( as.vector( sim.matrix ) ) +
+    geom_histogram( binwidth = 0.8, col = "black", aes( fill = ..count.. ) ) +
+    xlab( "Simulated Values" ) + ylab("Count") +
+    ggtitle( "Distribution of Random Exponential Numbers" ) +
+    geom_vline( aes( xintercept = raw.mean, color = "Mean" ), size = 1 ) +
+    scale_color_manual( name = "", values = c( Mean = "red" ) ) +
+    scale_fill_continuous( name = "Count" );
+print( raw.histogram );
+```
+
+However, the distribution of the sample means calculated from the individual
+simulations *is* normal. The following histogram shows the distribution of the
+sample means and fits a normal curve with the same statistics, clearly showing
+that the sample means follows a Gaussian distribution.
+
+```{r sample_means_histogram, fig.width = 7, fig.height = 4}
+sim.histogram =
+    ggplot( show.legend = TRUE ) + aes( sim.means ) +
+    geom_histogram( binwidth = 0.15, col = "black", aes( fill = ..count.. ) ) +
+    xlab( "Sample Means" ) + ylab("Count") +
+    ggtitle(
+        "Distribution of Sample Means for Random Exponential Numbers"
+    ) +
+    geom_vline( aes( xintercept = sim.mean, color = "Mean" ), size = 1 ) +
+    scale_color_manual( name = "", values = c( Mean = "red" ) ) +
+    scale_fill_continuous( name = "Count" ) +
+    stat_function(
+        fun = function(x, mean, sd, n, bw) dnorm(x=x,mean=mean,sd=sd)*n*bw,
+        color = "green3",
+        size = 1.5,
+        args = list( mean = sim.mean, sd = sim.sd, n = 1000, bw = 0.15 )
+    );
+print( sim.histogram );
+```
+The central limit theorm states that
+
+> The distribution of averages of independent and identically distributed
+> variables becomes that of a standard normal as the sample size increases.
+
+In this case, despite the underlying shape of the exponential distribution, the
+distribution of the sample means clearly approaches a normal distribution,
+centered about the mean of the exponential distribution, as predicted by the
+Central Limit Theorem. Note that the variance on the sample mean is controlled
+by the sample size, $n=40$.
+
+
+\newpage
+## Appendix
+
+### System Information
+
+This analysis was performed using the hardware and software specified in this
+section.
+
+```{r system_info}
+sessionInfo();
+```

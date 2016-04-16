@@ -122,7 +122,7 @@ sim.histogram =
     );
 print( sim.histogram );
 ```
-The central limit theorm states that
+The Central Limit Theorem states that
 
 > The distribution of averages of independent and identically distributed
 > variables becomes that of a standard normal as the sample size increases.

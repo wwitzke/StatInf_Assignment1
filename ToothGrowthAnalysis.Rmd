@@ -1,30 +1,204 @@
 ---
-title: "The Effect of Vitamin C on Tooth Growth in Guinea Pigs"
+title: "An Analysis of the Effect of Vitamin C on Tooth Growth in Guinea Pigs"
 author: "Wayne Witzke"
-date: "April 15, 2016"
+header-includes:
+  - \usepackage[table]{xcolor}
 output: pdf_document
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+## Synopsis
+
+## Preliminaries
+
+This section prepares the analysis to run. For more information on replicating
+this analysis, see the appendix.
+
+```{r setup}
+library(ggplot2); library(plyr);
+data(ToothGrowth);
+options(digits=5);
 ```
 
-## R Markdown
+## Exploratory Analysis
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+### Summary of Data
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+This analysis uses the `ToothGrowth` data set included natively with most R
+distributions. As described in the R help document, each of 60 guinea pigs was
+given a dose of 0.5, 1, or 2 mg/day of vitamin C by one of two delivery
+methods, orange juice (coded `OJ`) or ascorbic acid (coded `VC`). The length of
+their odontoblasts were then measured. The structure of the data set is:
 
-```{r cars}
-summary(cars)
+```{r data_structure}
+str(ToothGrowth)
 ```
 
-## Including Plots
+### Exploratory Graphs
 
-You can also embed plots, for example:
+We are interested in seeing if there is a significant difference between the
+doses, and between the delivery methods. Unfortunately, because of potential
+correlations between dose and delivery method, we cannot simply compare
+aggregates, so we will look at all 6 grops individually. Below are histograms
+showing the distribution of all 60 samples in each of the 6 groups
+individually, each with a Gaussian curve fit to show how well the sample
+approximates a normal distribution.
 
-```{r pressure, echo=FALSE}
-plot(pressure)
+```{r explore_graphs, fig.width=8, fig.height=3}
+#   We want to fit normals to the graphs here.
+ToothGrowthNorms =
+    ddply( ToothGrowth, .(supp, dose), function(df) {
+        lenSeq=seq(min(ToothGrowth$len)-8, max(ToothGrowth$len)+8, length=200 );
+        data.frame(len=lenSeq, count=2.37*10*dnorm(lenSeq, mean(df$len), sd(df$len)));
+    });
+ToothGrowth.histogram =
+    ggplot( ToothGrowth, aes( len ), show.legend = TRUE ) +
+    geom_histogram( binwidth=2.37, col = "black", aes( fill = ..count.. ) ) +
+    xlab( "Length" ) + ylab("Count") +
+    ggtitle( "Exploratory Histograms for Guinea Pig Tooth Growth by Group" )  +
+    facet_grid( supp ~ dose ) +
+    scale_fill_continuous( name = "Count" ) +
+    geom_line(aes(y = count), data=ToothGrowthNorms, color="green3", size=1);
+print( ToothGrowth.histogram );
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+It is difficult to tell from these plots if every group is normal. However,
+since most of them appear to be at least approximately normal, for this
+analysis, we will assume that they follow the Student's t distribution.
+This is appropriate both because of the small sample sizes ($n=10$) and because
+we do not know the actual population standard deviation.
+
+## Analysis
+
+We are interested in seeing if there is a difference between individual groups.
+Our null hypothesis, $H_0$, is that there is no difference, and the alternative
+hypothesis, $H_\alpha$, is that the dose or delivery method makes a difference.
+Because of the potential for correlation betweens doses and delivery methods,
+we will be looking for significant differences between any two groups, which is
+15 hypothesis tests. To control for the number of tests performed, we will use
+the *Bonferroni correction*. Our $\alpha=0.05$ for each test individually. With
+the correction, however, we will be using an effective $\alpha=`r 0.05/15`$ for
+each hypothesis test. We will be using a two-sided Student's t test to generate
+p-values, and we will not treat the variance between groups as equal.
+
+The figure below summarizes the results of the hypothesis testing. Note that
+p-values that reject the null hypothesis are highlighted in green. (See the
+Appendix for the full code to generate this figure.)
+
+```{r refactor, echo=FALSE}
+TG = ToothGrowth;
+TG$group = with(TG, interaction( dose, supp ) );
+```
+
+\begin{center}
+\bgroup
+\def\arraystretch{1.5}
+\begin{tabular}{|r|c|c|c|c|c|}
+ \hline
+ \multicolumn{6}{|c|}{Summary of P-Values Calculated Across Groups} \\
+ \hline
+ \hline
+ Dose/Mthd & 0.5/OJ & 1/OJ & 2/OJ & 0.5/VC & 1/VC \\
+ \hline
+ 1/OJ & \cellcolor{green} $`r t.test(TG[TG$group=="0.5.OJ","len"],TG[TG$group=="1.OJ","len"],alternative="two.sided")$p.value`$ & --- & --- & --- & --- \\
+ \hline
+ 2/OJ & \cellcolor{green} $`r t.test(TG[TG$group=="0.5.OJ","len"],TG[TG$group=="2.OJ","len"],alternative="two.sided")$p.value`$ & $`r t.test(TG[TG$group=="1.OJ","len"],TG[TG$group=="2.OJ","len"],alternative="two.sided")$p.value`$ & --- & --- & --- \\
+ \hline
+ 0.5/VC & $`r t.test(TG[TG$group=="0.5.OJ","len"],TG[TG$group=="0.5.VC","len"],alternative="two.sided")$p.value`$ & \cellcolor{green} $`r t.test(TG[TG$group=="1.OJ","len"],TG[TG$group=="0.5.VC","len"],alternative="two.sided")$p.value`$ & \cellcolor{green} $`r t.test(TG[TG$group=="2.OJ","len"],TG[TG$group=="0.5.VC","len"],alternative="two.sided")$p.value`$ & --- & --- \\
+ \hline
+ 1/VC & $`r t.test(TG[TG$group=="0.5.OJ","len"],TG[TG$group=="1.VC","len"],alternative="two.sided")$p.value`$ & \cellcolor{green} $`r t.test(TG[TG$group=="1.OJ","len"],TG[TG$group=="1.VC","len"],alternative="two.sided")$p.value`$ & \cellcolor{green} $`r t.test(TG[TG$group=="2.OJ","len"],TG[TG$group=="1.VC","len"],alternative="two.sided")$p.value`$ & \cellcolor{green} $`r t.test(TG[TG$group=="0.5.VC","len"],TG[TG$group=="1.VC","len"],alternative="two.sided")$p.value`$ & --- \\
+ \hline
+ 2/VC & \cellcolor{green} $`r t.test(TG[TG$group=="0.5.OJ","len"],TG[TG$group=="2.VC","len"],alternative="two.sided")$p.value`$ & $`r t.test(TG[TG$group=="1.OJ","len"],TG[TG$group=="2.VC","len"],alternative="two.sided")$p.value`$ & $`r t.test(TG[TG$group=="2.OJ","len"],TG[TG$group=="2.VC","len"],alternative="two.sided")$p.value`$ & \cellcolor{green} $`r t.test(TG[TG$group=="0.5.VC","len"],TG[TG$group=="2.VC","len"],alternative="two.sided")$p.value`$ & \cellcolor{green} $`r t.test(TG[TG$group=="1.VC","len"],TG[TG$group=="2.VC","len"],alternative="two.sided")$p.value`$ \\
+ \hline
+\end{tabular}
+\egroup
+\end{center}
+
+\newpage
+## Conclusions
+
+From the analysis, it appears as though increaseing the dosage has a
+significant effect. There are several cases where increasing dosage appears to
+have no significant effect, specifically between 0.5/OJ and 1/VC, between 1/OJ
+and 2/VC, or between 1/OJ and 2/OJ. Generally speaking, however, increased
+dosage does appear to directly impact guinea pig tooth growth.
+
+On the other hand, there appears to be less evidence that the delivery method
+has a significant impact on tooth growth. While 1/OJ vs. 1/VC did show a
+significant difference, $H_0$ could not be rejected for either 0.5/OJ vs.
+0.5/VC or 2/OJ vs. 2/VC.
+
+\newpage
+## Appendix
+
+### System Information
+
+This analysis was performed using the hardware and software specified in this
+section.
+
+```{r system_info}
+sessionInfo();
+```
+
+### Code to Gennerate the P-Value Summary Table
+```{r appendix_table_code, eval=FALSE}
+
+`r TG = ToothGrowth; TG$group = with(TG, interaction( dose, supp ) );`
+
+\begin{center}
+\bgroup
+\def\arraystretch{1.5}
+\begin{tabular}{|r|c|c|c|c|c|}
+ \hline
+ \multicolumn{6}{|c|}{Summary of P-Values Calculated Across Groups} \\
+ \hline
+ \hline
+ Dose/Mthd & 0.5/OJ & 1/OJ & 2/OJ & 0.5/VC & 1/VC \\
+ \hline
+ 1/OJ
+ &  \cellcolor{green} $`r t.test(TG[TG$group=="0.5.OJ","len"],TG[TG$group=="1.OJ","len"],
+ alternative="two.sided")$p.value`$
+ &  --- &  --- &  --- &  --- \\
+ \hline
+ 2/OJ
+ &  \cellcolor{green} $`r t.test(TG[TG$group=="0.5.OJ","len"],TG[TG$group=="2.OJ","len"],
+ alternative="two.sided")$p.value`$
+ &  $`r t.test(TG[TG$group=="1.OJ","len"],TG[TG$group=="2.OJ","len"],
+ alternative="two.sided")$p.value`$
+ &  --- &  --- &  --- \\
+ \hline
+ 0.5/VC
+ &  $`r t.test(TG[TG$group=="0.5.OJ","len"],TG[TG$group=="0.5.VC","len"],
+ alternative="two.sided")$p.value`$
+ &  \cellcolor{green} $`r t.test(TG[TG$group=="1.OJ","len"],TG[TG$group=="0.5.VC","len"],
+ alternative="two.sided")$p.value`$
+ &  \cellcolor{green} $`r t.test(TG[TG$group=="2.OJ","len"],TG[TG$group=="0.5.VC","len"],
+ alternative="two.sided")$p.value`$
+ &  --- &  --- \\
+ \hline
+ 1/VC
+ &  $`r t.test(TG[TG$group=="0.5.OJ","len"],TG[TG$group=="1.VC","len"],
+ alternative="two.sided")$p.value`$
+ &  \cellcolor{green} $`r t.test(TG[TG$group=="1.OJ","len"],TG[TG$group=="1.VC","len"],
+ alternative="two.sided")$p.value`$
+ &  \cellcolor{green} $`r t.test(TG[TG$group=="2.OJ","len"],TG[TG$group=="1.VC","len"],
+ alternative="two.sided")$p.value`$
+ &  \cellcolor{green} $`r t.test(TG[TG$group=="0.5.VC","len"],TG[TG$group=="1.VC","len"],
+ alternative="two.sided")$p.value`$
+ &  --- \\
+ \hline
+ 2/VC
+ &  \cellcolor{green} $`r t.test(TG[TG$group=="0.5.OJ","len"],TG[TG$group=="2.VC","len"],
+ alternative="two.sided")$p.value`$
+ &  $`r t.test(TG[TG$group=="1.OJ","len"],TG[TG$group=="2.VC","len"],
+ alternative="two.sided")$p.value`$
+ &  $`r t.test(TG[TG$group=="2.OJ","len"],TG[TG$group=="2.VC","len"],
+ alternative="two.sided")$p.value`$
+ &  \cellcolor{green} $`r t.test(TG[TG$group=="0.5.VC","len"],TG[TG$group=="2.VC","len"],
+ alternative="two.sided")$p.value`$
+ &  \cellcolor{green} $`r t.test(TG[TG$group=="1.VC","len"],TG[TG$group=="2.VC","len"],
+ alternative="two.sided")$p.value`$ \\
+ \hline
+\end{tabular}
+\egroup
+\end{center}
+```

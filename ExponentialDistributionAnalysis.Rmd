@@ -83,7 +83,7 @@ in the following table.
 
 
 ### Distribution
-As can be seen from the following histrogram, random values drawn from the
+As can be seen from the following histogram, random values drawn from the
 exponential distribution do not have a normal distribution. For example, the
 mean does not occur at the peak value.
 

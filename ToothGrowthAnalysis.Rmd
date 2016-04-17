@@ -7,6 +7,13 @@ output: pdf_document
 ---
 
 ## Synopsis
+Our analysis examines whether dose (0.5 mg/day, 1 mg/day, 2 mg/day) or delivery
+method (orange juice vs. ascorbic acid) has an effect on the tooth growth in
+guinea pigs. We examine 6 individual groups of guinea pigs, each with a
+different combination of dosage and delivery method, and determine if there are
+any significant differences between these groups. We find that there is fairly
+strong evidence that increasing dosage changes tooth growth, but that there is
+less evidence that delivery method has a impact.
 
 ## Preliminaries
 
@@ -38,7 +45,7 @@ str(ToothGrowth)
 We are interested in seeing if there is a significant difference between the
 doses, and between the delivery methods. Unfortunately, because of potential
 correlations between dose and delivery method, we cannot simply compare
-aggregates, so we will look at all 6 grops individually. Below are histograms
+aggregates, so we will look at all 6 groups individually. Below are histograms
 showing the distribution of all 60 samples in each of the 6 groups
 individually, each with a Gaussian curve fit to show how well the sample
 approximates a normal distribution.
@@ -67,16 +74,16 @@ analysis, we will assume that they follow the Student's t distribution.
 This is appropriate both because of the small sample sizes ($n=10$) and because
 we do not know the actual population standard deviation.
 
-## Analysis
+## Hypothesis Testing
 
 We are interested in seeing if there is a difference between individual groups.
 Our null hypothesis, $H_0$, is that there is no difference, and the alternative
 hypothesis, $H_\alpha$, is that the dose or delivery method makes a difference.
 Because of the potential for correlation betweens doses and delivery methods,
 we will be looking for significant differences between any two groups, which is
-15 hypothesis tests. To control for the number of tests performed, we will use
+$\eta=15$ hypothesis tests. To control for the number of tests performed, we will use
 the *Bonferroni correction*. Our $\alpha=0.05$ for each test individually. With
-the correction, however, we will be using an effective $\alpha=`r 0.05/15`$ for
+the correction, however, we will be using an effective $\alpha_c=\frac{\alpha}{\eta}=`r 0.05/15`$ for
 each hypothesis test. We will be using a two-sided Student's t test to generate
 p-values, and we will not treat the variance between groups as equal.
 
@@ -113,19 +120,26 @@ TG$group = with(TG, interaction( dose, supp ) );
 \egroup
 \end{center}
 
-\newpage
 ## Conclusions
 
-From the analysis, it appears as though increaseing the dosage has a
-significant effect. There are several cases where increasing dosage appears to
-have no significant effect, specifically between 0.5/OJ and 1/VC, between 1/OJ
-and 2/VC, or between 1/OJ and 2/OJ. Generally speaking, however, increased
-dosage does appear to directly impact guinea pig tooth growth.
+There are three sets of p-values that are of clear interest. The first is the
+increase in dosage in orange juice, and the second is the increase in dosage
+in ascorbic acid. Examining these p-values, there appears to be a significant
+effect caused by increasing dosage. The only p-value in these two sets which
+fails to reject $H_0$ is between 1/OJ and 2/OJ. In addition, though there may
+be cross correlations that muddy the data, increase in dosage across delivery
+methods also appears to generally support the hypothesis that differeing doses
+has a significant impact on tooth growth.
 
-On the other hand, there appears to be less evidence that the delivery method
-has a significant impact on tooth growth. While 1/OJ vs. 1/VC did show a
-significant difference, $H_0$ could not be rejected for either 0.5/OJ vs.
-0.5/VC or 2/OJ vs. 2/VC.
+The third set of p-values that interest us are the ones where dosage is held
+constant, and only the delivery method changes. In this case, there appears to
+be less evidence of a significant relationship. Only 1/OJ vs. 1/VC rejected
+$H_0$, while 0.5/VC vs. 0.5/OJ and 2/VC vs 2/OJ did not. Still, we conclude
+that there is likely some effect based on delivery method, though we would
+probably urge additional testing to be certain.
+
+These conclusions hold only if the underlying samples were normally distributed
+within their own groups.
 
 \newpage
 ## Appendix
@@ -139,7 +153,7 @@ section.
 sessionInfo();
 ```
 
-### Code to Gennerate the P-Value Summary Table
+### Code to Generate the P-Value Summary Table
 ```{r appendix_table_code, eval=FALSE}
 
 `r TG = ToothGrowth; TG$group = with(TG, interaction( dose, supp ) );`
